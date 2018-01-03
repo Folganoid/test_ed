@@ -6,7 +6,7 @@ use AppBundle\Entity\Properties;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
-use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Config\Definition\Exception\Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -21,6 +21,10 @@ class ApiController extends Controller
     {
         $data = json_decode($request->getContent());
 
+        if (!$this->getHeadersDataFromRequest($request)) {
+            throw new \Exception('Access denied', 401);
+        };
+
         $em = $this->getDoctrine()->getManager();
         $prop = new Properties();
         $prop->setName($data->name);
@@ -29,10 +33,7 @@ class ApiController extends Controller
         $em->flush();
 
         return new Response('Property created', 200);
-
-//        return new Response(var_dump($data->name));
     }
-
 
     /**
      * @Route("/api/properties", name="read_properties")
@@ -56,13 +57,16 @@ class ApiController extends Controller
         return new Response(var_dump($props));
     }
 
-
     /**
      * @Route("/api/properties/{id}", name="read_property")
      * @Method({"GET"})
      */
-    public function readOneAction($id)
+    public function readOneAction(Request $request, $id)
     {
+        if (!$this->getHeadersDataFromRequest($request)) {
+            throw new \Exception('Access denied', 401);
+        };
+
         $prop = $this->getDoctrine()
             ->getRepository(Properties::class)
             ->find($id);
@@ -76,13 +80,16 @@ class ApiController extends Controller
         return new Response(var_dump($prop));
     }
 
-
     /**
      * @Route("/api/properties/{id}", name="update_property")
      * @Method({"PUT"})
      */
     public function updateAction(Request $request, $id)
     {
+        if (!$this->getHeadersDataFromRequest($request)) {
+            throw new \Exception('Access denied', 401);
+        };
+
         $data = json_decode($request->getContent());
         $prop = $this->getDoctrine()
             ->getRepository(Properties::class)
@@ -104,13 +111,16 @@ class ApiController extends Controller
         return new Response('Property updated', 200);
     }
 
-
     /**
      * @Route("/api/properties/{id}", name="delete_property")
      * @Method({"DELETE"})
      */
-    public function deleteAction($id)
+    public function deleteAction(Request $request, $id)
     {
+        if (!$this->getHeadersDataFromRequest($request)) {
+            throw new \Exception('Access denied', 401);
+        };
+
         $prop = $this->getDoctrine()
             ->getRepository(Properties::class)
             ->find($id);
@@ -123,7 +133,7 @@ class ApiController extends Controller
     }
 
     /**
-     *
+     * create inner Token
      *
      * @param $method
      * @param $uri
@@ -144,4 +154,39 @@ class ApiController extends Controller
         return hash_hmac('sha256', $string, $secretKey);
     }
 
+    /**
+     * check equal out coming Token & inner Token
+     *
+     * @param $outComeToken
+     * @param $innerToken
+     * @return bool
+     */
+    public function checkEqualToken($outComeToken, $innerToken)
+    {
+        if ($outComeToken == $innerToken) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * get headers from request
+     *
+     * @param Request $request
+     * @return bool
+     */
+    public function getHeadersDataFromRequest(Request $request)
+    {
+        $body = $request->getContent();
+        $userId = $request->server->get('HTTP_X_USER_ID');
+        $userToken = $request->server->get('HTTP_X_AUTH_TOKEN');
+        $method = $request->server->get('REQUEST_METHOD');
+        $uri = $request->server->get('REQUEST_URI');
+        $secretKey = $this->container->getParameter('secret');
+        $timeStamp = (new \DateTime())->getTimestamp();
+
+        $token = $this->signRequest($method, $uri, $body, $timeStamp, $secretKey);
+
+        return ($this->checkEqualToken($userToken, $token) && !$userId) ? true : false;
+    }
 }
