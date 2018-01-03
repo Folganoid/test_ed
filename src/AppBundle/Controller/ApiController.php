@@ -32,6 +32,18 @@ class ApiController extends Controller
         $em->persist($prop);
         $em->flush();
 
+
+        /// debug
+        $body = $request->getContent();
+        $method = $request->server->get('REQUEST_METHOD');
+        $uri = $request->server->get('REQUEST_URI');
+        $secretKey = $this->container->getParameter('secret');
+        $timeStamp = (new \DateTime())->getTimestamp();
+
+        var_dump($this->signRequest($method, $uri, $body, $timeStamp, $secretKey));
+        ///
+
+
         return new Response('Property created', 200);
     }
 
