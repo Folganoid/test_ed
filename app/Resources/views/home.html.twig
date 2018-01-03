@@ -1,0 +1,67 @@
+<h1>Home</h1>
+
+<script
+        src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous"></script>
+
+{% for item in props %}
+    <b>{{ item.id }}</b> - <i>{{ item.name }}</i> - <b>{{ item.description }}</b><br>
+{% endfor %}
+
+<br><br>
+
+URI:<br>
+<input type="text" id="prop_url"/><br>
+Name:<br>
+<input type="text" id="prop_name"/><br>
+Description:<br>
+<input type="text" id="prop_desc"/><br>
+X-USER_ID:<br>
+<input type="text" id="prop_user_id"/><br>
+X-USER_TOKEN:<br>
+<input type="text" id="prop_token"/><br><br>
+<select id="method">
+    <option value="POST">POST</option>
+    <option value="GET">GET</option>
+    <option value="PUT">PUT</option>
+    <option value="DELETE">DELETE</option>
+</select>
+
+<button id="send"> Add</button>
+
+<script>
+
+    $('#send').click(function () {
+
+        var url = $('#prop_url').val();
+        var name = $('#prop_name').val();
+        var desc = $('#prop_desc').val();
+        var userId = $('#prop_user_id').val();
+        var token = $('#prop_token').val();
+        var method = $('#method').val();
+        var data = '{"name": "' + name + '", "description": "' + desc + '"}';
+
+        //console.log(url + ' - ' + name + ' - ' + desc + ' - ' + userId + '-' + token + ' - ' + method);
+
+
+        $.ajax({
+            url: url,
+            type: method,
+            beforeSend: function(xhrObj){
+                xhrObj.setRequestHeader("X_USER-ID", userId);
+                xhrObj.setRequestHeader("X_AUTH-TOKEN", token);
+            },
+            data: data,
+            dataType: 'json',
+
+            success: function ($res) {
+                console.log($res);
+            }
+
+        });
+
+
+    });
+
+</script>

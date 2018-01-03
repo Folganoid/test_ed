@@ -51,10 +51,7 @@ class ApiController extends Controller
             );
         }
 
-        echo '<pre>';
-        print_r($props);
-        die();
-        return new Response(var_dump($props));
+        return $this->render('home.html.twig', ['props' => $props]);
     }
 
     /**
@@ -187,6 +184,6 @@ class ApiController extends Controller
 
         $token = $this->signRequest($method, $uri, $body, $timeStamp, $secretKey);
 
-        return ($this->checkEqualToken($userToken, $token) && !$userId) ? true : false;
+        return ($this->checkEqualToken($userToken, $token) && $userId) ? true : false;
     }
 }
