@@ -11,27 +11,30 @@
 
 <br><br>
 
-URI:<br>
-<input type="text" id="prop_url"/><br>
-Name:<br>
-<input type="text" id="prop_name"/><br>
-Description:<br>
-<input type="text" id="prop_desc"/><br>
-X-USER_ID:<br>
-<input type="text" id="prop_user_id"/><br>
-X-USER_TOKEN:<br>
-<input type="text" id="prop_token"/><br><br>
-<select id="method">
-    <option value="POST">POST</option>
-    <option value="GET">GET</option>
-    <option value="PUT">PUT</option>
-    <option value="DELETE">DELETE</option>
-</select>
+    URI:<br>
+       <input type="text" id="prop_url" value="http://localhost:8000/api/properties"/><br>
+    Name:<br>
+        <input type="text" id="prop_name"/><br>
+    Description:<br>
+        <input type="text" id="prop_desc"/><br>
+    X-USER_ID:<br>
+        <input type="text" id="prop_user_id"/><br>
+    X-USER_TOKEN:<br>
+        <input type="text" id="prop_token"/><br><br>
+
+        <select id="method">
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="DELETE">DELETE</option>
+        </select>
 
 <button id="send">SEND</button>
+<br><br>
+<button id="token">Get TOKEN</button> <span class="token"></span>
 
 <script>
 
+    // if click SEND
     $('#send').click(function () {
 
         var url = $('#prop_url').val();
@@ -42,20 +45,51 @@ X-USER_TOKEN:<br>
         var method = $('#method').val();
         var data = '{"name": "' + name + '", "description": "' + desc + '"}';
 
-        //console.log(url + ' - ' + name + ' - ' + desc + ' - ' + userId + '-' + token + ' - ' + method);
-
         $.ajax({
             url: url,
             type: method,
-            beforeSend: function(xhrObj){
+            beforeSend: function (xhrObj) {
                 xhrObj.setRequestHeader("X_USER-ID", userId);
                 xhrObj.setRequestHeader("X_AUTH-TOKEN", token);
+                xhrObj.setRequestHeader("METHOD", method);
+                xhrObj.setRequestHeader("URL", url);
             },
             data: data,
-            dataType: 'json',
 
             success: function ($res) {
                 console.log($res);
+                setTimeout(function () {
+                    window.location.reload();
+                }, 1000);
+            }
+        });
+    });
+
+    // if click GET TOKEN
+    $('#token').click(function () {
+
+        var url = $('#prop_url').val();
+        var name = $('#prop_name').val();
+        var userId = $('#prop_user_id').val();
+        var token = $('#prop_token').val();
+        var desc = $('#prop_desc').val();
+        var method = $('#method').val();
+        var data = '{"name": "' + name + '", "description": "' + desc + '"}';
+
+        $.ajax({
+            url: '/api/token',
+            type: 'POST',
+            beforeSend: function (xhrObj) {
+                xhrObj.setRequestHeader("X_USER-ID", userId);
+                xhrObj.setRequestHeader("X_AUTH-TOKEN", token);
+                xhrObj.setRequestHeader("METHOD", method);
+                xhrObj.setRequestHeader("URL", url);
+            },
+            data: data,
+
+            success: function ($res) {
+                console.log($res);
+                $('.token').text($res);
             }
         });
     });

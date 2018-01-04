@@ -6,7 +6,7 @@ use AppBundle\Entity\Properties;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
-use Symfony\Component\Config\Definition\Exception\Exception;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -22,7 +22,7 @@ class ApiController extends Controller
         $data = json_decode($request->getContent());
 
         if (!$this->getHeadersDataFromRequest($request)) {
-            throw new \Exception('Access denied', 401);
+            return new Response('Access denied', 401);
         };
 
         $em = $this->getDoctrine()->getManager();
@@ -31,18 +31,6 @@ class ApiController extends Controller
         $prop->setDescription($data->description);
         $em->persist($prop);
         $em->flush();
-
-
-        /// debug
-        $body = $request->getContent();
-        $method = $request->server->get('REQUEST_METHOD');
-        $uri = $request->server->get('REQUEST_URI');
-        $secretKey = $this->container->getParameter('secret');
-        $timeStamp = (new \DateTime())->getTimestamp();
-
-        var_dump($this->signRequest($method, $uri, $body, $timeStamp, $secretKey));
-        ///
-
 
         return new Response('Property created', 200);
     }
@@ -58,9 +46,7 @@ class ApiController extends Controller
             ->findAll();
 
         if (!$props) {
-            throw $this->createNotFoundException(
-                'Can not find Properties'
-            );
+            return new Response('Data not find', 204);
         }
 
         return $this->render('home.html.twig', ['props' => $props]);
@@ -68,12 +54,12 @@ class ApiController extends Controller
 
     /**
      * @Route("/api/properties/{id}", name="read_property")
-     * @Method({"GET"})
+     * @Method({"POST"})
      */
     public function readOneAction(Request $request, $id)
     {
         if (!$this->getHeadersDataFromRequest($request)) {
-            throw new \Exception('Access denied', 401);
+            return new Response('Access denied', 401);
         };
 
         $prop = $this->getDoctrine()
@@ -81,12 +67,12 @@ class ApiController extends Controller
             ->find($id);
 
         if (!$prop) {
-            throw $this->createNotFoundException(
-                'Can`t find Property'
-            );
+            return new Response('Data not find', 204);
         }
 
-        return new Response(var_dump($prop));
+        $response = (['id' => $prop->getId(), 'name' => $prop->getName(), 'description' => $prop->getDescription()]);
+
+        return new JsonResponse($response);
     }
 
     /**
@@ -96,7 +82,7 @@ class ApiController extends Controller
     public function updateAction(Request $request, $id)
     {
         if (!$this->getHeadersDataFromRequest($request)) {
-            throw new \Exception('Access denied', 401);
+            return new Response('Access denied', 401);
         };
 
         $data = json_decode($request->getContent());
@@ -105,9 +91,7 @@ class ApiController extends Controller
             ->find($id);
 
         if (!$prop) {
-            throw $this->createNotFoundException(
-                'Can`t find Property'
-            );
+            return new Response('Data not find', 204);
         }
 
         $prop->setName($data->name);
@@ -127,12 +111,16 @@ class ApiController extends Controller
     public function deleteAction(Request $request, $id)
     {
         if (!$this->getHeadersDataFromRequest($request)) {
-            throw new \Exception('Access denied', 401);
+            return new Response('Access denied', 401);
         };
 
         $prop = $this->getDoctrine()
             ->getRepository(Properties::class)
             ->find($id);
+
+        if (!$prop) {
+            return new Response('Data not find', 204);
+        }
 
         $em = $this->getDoctrine()->getManager();
         $em->remove($prop);
@@ -170,9 +158,9 @@ class ApiController extends Controller
      * @param $innerToken
      * @return bool
      */
-    public function checkEqualToken($outComeToken, $innerToken)
+    public function checkEqualToken($outComeToken, $innerToken): bool
     {
-        if ($outComeToken == $innerToken) {
+        if ($outComeToken != $innerToken) {  /////// change to == for avoid token matchig
             return false;
         }
         return true;
@@ -184,18 +172,37 @@ class ApiController extends Controller
      * @param Request $request
      * @return bool
      */
-    public function getHeadersDataFromRequest(Request $request)
+    public function getHeadersDataFromRequest(Request $request): bool
     {
         $body = $request->getContent();
         $userId = $request->server->get('HTTP_X_USER_ID');
         $userToken = $request->server->get('HTTP_X_AUTH_TOKEN');
-        $method = $request->server->get('REQUEST_METHOD');
-        $uri = $request->server->get('REQUEST_URI');
+        $method = $request->server->get('HTTP_METHOD');
+        $uri = $request->server->get('HTTP_URL');
         $secretKey = $this->container->getParameter('secret');
-        $timeStamp = (new \DateTime())->getTimestamp();
+        $timeStamp = (new \DateTime(date('Y-m-d')))->getTimestamp();
 
         $token = $this->signRequest($method, $uri, $body, $timeStamp, $secretKey);
 
         return ($this->checkEqualToken($userToken, $token) && $userId) ? true : false;
+    }
+
+    /**
+     * test login check
+     *
+     * @Route("/api/token", name="get_token")
+     * @Method({"POST"})
+     */
+    public function getTokenTMP(Request $request)
+    {
+        $body = $request->getContent();
+        $method = $request->server->get('HTTP_METHOD');
+        $uri = $request->server->get('HTTP_URL');
+        $secretKey = $this->container->getParameter('secret');
+        $timeStamp = (new \DateTime(date('Y-m-d')))->getTimestamp();
+
+        $token = $this->signRequest($method, $uri, $body, $timeStamp, $secretKey);
+
+        return new Response($token, 200);
     }
 }
